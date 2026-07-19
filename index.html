@@ -315,14 +315,17 @@ input, select, textarea { font-size: 16px; }
 .rec-table-head {
   background: var(--gray-800); padding: 10px 14px;
   display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 8px;
 }
 .rec-table-head span { color: #fff; font-size: 12px; font-weight: 700; }
 .export-btn {
   background: #16a34a; color: #fff; border: none;
   border-radius: 6px; padding: 6px 14px; font-size: 12px; font-weight: 700;
-  cursor: pointer; transition: background 0.15s;
+  cursor: pointer; transition: background 0.15s; white-space: nowrap;
 }
 .export-btn:hover { background: #15803d; }
+.export-btn.primary { background: var(--primary); }
+.export-btn.primary:hover { background: var(--primary-d); }
 
 .rec-list { max-height: 60vh; overflow-y: auto; }
 .rec-item {
@@ -580,7 +583,10 @@ input, select, textarea { font-size: 16px; }
     <div class="rec-table-wrap">
       <div class="rec-table-head">
         <span id="recCountLabel">전체 0건</span>
-        <button class="export-btn" onclick="exportExcel()">📊 엑셀 내보내기</button>
+        <div style="display:flex;gap:6px;">
+          <button class="export-btn primary" onclick="bulkApproveManager()">✅ 일괄 승인</button>
+          <button class="export-btn" onclick="exportExcel()">📊 엑셀 내보내기</button>
+        </div>
       </div>
       <div class="rec-list" id="recList"></div>
     </div>
@@ -887,8 +893,11 @@ function renderCeo() {
   loadRecordsFromCloud().then(() => { _renderCeoUI(); });
 }
 
+let currentCeoPending = [];
+
 function _renderCeoUI() {
   const pending = records.filter(r => r.approval?.managerDate && !r.approval?.ceoDate);
+  currentCeoPending = pending;
   const done = records.filter(r => r.approval?.ceoDate)
     .sort((a,b) => new Date(b.approval.ceoDate) - new Date(a.approval.ceoDate))
     .slice(0, 10);
@@ -918,7 +927,10 @@ function _renderCeoUI() {
 
   document.getElementById('ceoBody').innerHTML = `
     <div class="card" style="padding:0;overflow:hidden;">
-      <div class="rec-table-head"><span>🖋️ 결재 대기 ${pending.length}건</span></div>
+      <div class="rec-table-head">
+        <span>🖋️ 결재 대기 ${pending.length}건</span>
+        ${pending.length ? '<button class="export-btn primary" onclick="bulkApproveCeo()">✅ 일괄 결재</button>' : ''}
+      </div>
       <div class="rec-list">
         ${pending.length ? pending.map(r => renderItem(r, true)).join('') : '<div class="empty-msg">📭 결재 대기 중인 운행기록이 없습니다.</div>'}
       </div>
@@ -942,7 +954,25 @@ async function approveCeo(id) {
   toast('대표이사 결재 완료', 'ok');
 }
 
+async function bulkApproveCeo() {
+  const targets = currentCeoPending;
+  if (!targets.length) { toast('결재할 기록이 없습니다.', 'err'); return; }
+  if (!confirm(`${targets.length}건을 일괄 결재하시겠습니까?`)) return;
+
+  const name = currentUser?.name || '대표이사';
+  const date = todayStr();
+  for (const r of targets) {
+    r.approval.ceoName = name;
+    r.approval.ceoDate = date;
+  }
+  await Promise.all(targets.map(r => saveRecordToCloud(r)));
+  saveRecords();
+  _renderCeoUI();
+  toast(`${targets.length}건 일괄 결재 완료`, 'ok');
+}
+
 let currentAdminFilter = 'all';
+let currentFilteredRecords = [];
 
 function renderAdmin(filter) {
   // show loading state
@@ -974,6 +1004,7 @@ function _renderAdminUI(filter) {
   else if (filter === 'week') filtered = records.filter(r => new Date(r.date) >= weekStart);
   else if (filter === 'month') filtered = records.filter(r => r.date && r.date.startsWith(`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`));
   else if (filter !== 'all') filtered = records.filter(r => r.userId === filter);
+  currentFilteredRecords = filtered;
 
   // Stats
   const totalKm = filtered.reduce((s,r) => s + (r.distance||0), 0);
@@ -1041,6 +1072,24 @@ async function approveManager(id) {
   saveRecords();
   _renderAdminUI(currentAdminFilter);
   toast('관리자 승인 완료', 'ok');
+}
+
+async function bulkApproveManager() {
+  const targets = currentFilteredRecords.filter(r => !r.approval?.managerDate);
+  if (!targets.length) { toast('승인할 기록이 없습니다.', 'err'); return; }
+  if (!confirm(`${targets.length}건을 일괄 승인하시겠습니까?`)) return;
+
+  const name = currentUser?.name || '관리자';
+  const date = todayStr();
+  for (const r of targets) {
+    if (!r.approval) r.approval = { staffName: r.userName || '', staffDate: r.date || '', managerName: '', managerDate: '', ceoName: '', ceoDate: '' };
+    r.approval.managerName = name;
+    r.approval.managerDate = date;
+  }
+  await Promise.all(targets.map(r => saveRecordToCloud(r)));
+  saveRecords();
+  _renderAdminUI(currentAdminFilter);
+  toast(`${targets.length}건 일괄 승인 완료`, 'ok');
 }
 
 function deleteRecord(id) {
