@@ -404,8 +404,8 @@ input, select, textarea { font-size: 16px; }
 .modal-box h3 { font-size: 16px; font-weight: 700; margin-bottom: 16px; }
 .modal-pin-input {
   width: 100%; border: 2px solid var(--gray-200);
-  border-radius: 10px; padding: 12px; font-size: 24px;
-  text-align: center; letter-spacing: 8px;
+  border-radius: 10px; padding: 12px; font-size: 18px;
+  text-align: center; letter-spacing: 2px;
   outline: none; font-weight: 700;
 }
 .modal-pin-input:focus { border-color: var(--primary); }
@@ -584,7 +584,7 @@ input, select, textarea { font-size: 16px; }
 <div class="modal-bg" id="adminModal">
   <div class="modal-box">
     <h3>🔐 관리자 PIN</h3>
-    <input class="modal-pin-input" type="password" id="adminPinInput" maxlength="4" placeholder="····" inputmode="numeric">
+    <input class="modal-pin-input" type="password" id="adminPinInput" maxlength="20" placeholder="PIN 입력" autocomplete="off">
     <div style="font-size:11px;color:var(--danger);min-height:16px;margin-top:6px;" id="adminPinError"></div>
     <div class="modal-btns">
       <button class="modal-btn cancel" onclick="closeAdminModal()">취소</button>
@@ -608,7 +608,7 @@ const USERS = [
   { id: 'u5', name: '최재우', rank: '과장' },
   { id: 'u6', name: '직접입력', rank: '' },
 ];
-const ADMIN_PIN = '0000'; // 관리자 PIN (변경 권장)
+const ADMIN_PIN = 'admin1234!'; // 관리자 PIN
 const FROM_PLACE = '아티스포럼';
 const CAR_NUMS = { '레이': '12가3456', '셀토스': '34나5678', '스포티지': '56다7890' }; // 실제 번호로 교체
 
