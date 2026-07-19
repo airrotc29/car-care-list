@@ -2,7 +2,12 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#2563eb">
+<meta name="format-detection" content="telephone=no">
 <title>에이스종합관리(주) 법인차량 운행기록</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
@@ -34,14 +39,19 @@
   --shadow: 0 2px 8px rgba(0,0,0,0.08);
   --shadow-lg: 0 8px 24px rgba(0,0,0,0.12);
 }
-* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-html, body { height: 100%; }
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+html, body { height: 100%; overscroll-behavior-y: contain; }
 body {
   font-family: -apple-system, 'Pretendard', 'Apple SD Gothic Neo', BlinkMacSystemFont, sans-serif;
   background: var(--bg);
   color: var(--gray-800);
   min-height: 100vh;
+  min-height: 100dvh;
+  -webkit-text-size-adjust: 100%;
 }
+
+/* 모바일에서 입력창 포커스 시 자동 확대 방지 (iOS는 16px 미만 입력 폰트에서 확대됨) */
+input, select, textarea { font-size: 16px; }
 
 /* ── Screen system ── */
 .screen { display: none; min-height: 100vh; flex-direction: column; }
@@ -52,7 +62,9 @@ body {
 ════════════════════════════════ */
 #loginScreen {
   background: linear-gradient(160deg, #1e40af 0%, #2563eb 50%, #3b82f6 100%);
-  align-items: center; justify-content: center; padding: 24px;
+  align-items: center; justify-content: center;
+  padding: calc(24px + env(safe-area-inset-top)) calc(24px + env(safe-area-inset-right))
+            calc(24px + env(safe-area-inset-bottom)) calc(24px + env(safe-area-inset-left));
 }
 .login-card {
   background: #fff;
@@ -109,7 +121,7 @@ body {
 .custom-name-input {
   width: 100%; border: 1.5px solid var(--primary);
   border-radius: 10px; padding: 12px 14px;
-  font-size: 15px; font-weight: 600; color: var(--gray-800);
+  font-size: 16px; font-weight: 600; color: var(--gray-800);
   outline: none; background: var(--primary-l);
   transition: border-color 0.15s;
   box-shadow: 0 0 0 3px rgba(37,99,235,0.12);
@@ -129,7 +141,7 @@ body {
 
 .app-bar {
   background: var(--primary);
-  padding: 14px 16px 12px;
+  padding: calc(14px + env(safe-area-inset-top)) 16px 12px;
   display: flex; align-items: center; gap: 10px;
   box-shadow: 0 2px 8px rgba(37,99,235,0.3);
   position: sticky; top: 0; z-index: 50;
@@ -156,7 +168,10 @@ body {
   cursor: pointer; white-space: nowrap;
 }
 
-.main-body { flex: 1; padding: 16px; max-width: 480px; margin: 0 auto; width: 100%; }
+.main-body {
+  flex: 1; padding: 16px; padding-bottom: calc(16px + env(safe-area-inset-bottom));
+  max-width: 480px; margin: 0 auto; width: 100%;
+}
 
 .card {
   background: var(--card);
@@ -210,55 +225,17 @@ body {
 .dest-input {
   flex: 1; border: 1.5px solid var(--gray-200);
   border-radius: 8px; padding: 10px 12px;
-  font-size: 13px; outline: none;
+  font-size: 16px; outline: none;
   transition: border-color 0.15s;
+  min-width: 0;
 }
 .dest-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
 
-/* Photo upload boxes */
-.photo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.photo-box {
-  border: 2px dashed var(--gray-300);
-  border-radius: 12px; padding: 16px 8px;
-  text-align: center; cursor: pointer;
-  transition: all 0.2s; position: relative;
-  background: var(--gray-50); min-height: 130px;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-}
-.photo-box:hover { border-color: var(--primary); background: var(--primary-l); }
-.photo-box.has-photo { border-style: solid; border-color: var(--success); background: var(--success-l); }
-.photo-box.error { border-color: var(--danger); background: var(--danger-l); }
-.photo-box.loading { border-color: var(--warn); background: var(--warn-l); }
-.photo-box input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
-.photo-icon { font-size: 28px; margin-bottom: 6px; }
-.photo-label { font-size: 11px; font-weight: 700; color: var(--gray-600); margin-bottom: 4px; }
-.photo-sub { font-size: 10px; color: var(--gray-400); }
-.photo-km {
-  font-size: 22px; font-weight: 800; color: var(--success);
-  margin-top: 6px; letter-spacing: -0.5px;
-}
-.photo-km-unit { font-size: 11px; color: var(--success); font-weight: 600; }
-.photo-thumb-wrap {
-  width: 100%; height: 70px; overflow: hidden;
-  border-radius: 8px; margin-bottom: 6px;
-}
-.photo-thumb-wrap img {
-  width: 100%; height: 100%; object-fit: cover;
-}
-.ocr-spinner {
-  width: 20px; height: 20px;
-  border: 2px solid rgba(217,119,6,0.3);
-  border-top-color: var(--warn);
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
-  margin: 0 auto 6px;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
-
-/* KM manual edit */
+/* KM manual entry */
+.km-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .km-manual {
   border: 1.5px solid var(--gray-200); border-radius: 8px;
-  padding: 10px 12px; font-size: 15px; font-weight: 700;
+  padding: 10px 12px; font-size: 17px; font-weight: 700;
   color: var(--gray-800); width: 100%; text-align: center;
   outline: none; margin-top: 6px; background: #fff;
 }
@@ -268,7 +245,7 @@ body {
 .memo-input {
   width: 100%; border: 1.5px solid var(--gray-200);
   border-radius: 8px; padding: 10px 12px;
-  font-size: 13px; outline: none; background: var(--gray-50);
+  font-size: 16px; outline: none; background: var(--gray-50);
   transition: border-color 0.15s;
 }
 .memo-input:focus { border-color: var(--primary); background: #fff; }
@@ -305,12 +282,12 @@ body {
 
 .admin-bar {
   background: #1e293b;
-  padding: 14px 16px;
+  padding: calc(14px + env(safe-area-inset-top)) 16px 14px;
   display: flex; align-items: center; gap: 10px;
 }
 .admin-bar-title { color: #fff; font-size: 15px; font-weight: 700; flex: 1; }
 
-.admin-body { flex: 1; padding: 14px; }
+.admin-body { flex: 1; padding: 14px; padding-bottom: calc(14px + env(safe-area-inset-bottom)); }
 
 .filter-row {
   display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap;
@@ -324,7 +301,7 @@ body {
 .filter-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
 
 .stats-row {
-  display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 14px;
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px;
 }
 .stat-card {
   background: #fff; border-radius: 10px; padding: 10px 8px;
@@ -368,7 +345,6 @@ body {
 }
 .tag.car { background: var(--primary-l); color: var(--primary); }
 .tag.km { background: var(--success-l); color: var(--success); }
-.tag.ocr { background: #ede9fe; color: #7c3aed; }
 
 .ri-right { text-align: right; min-width: 48px; }
 .ri-km { font-size: 16px; font-weight: 800; color: var(--gray-800); }
@@ -401,7 +377,7 @@ body {
 
 /* Toast */
 .toast {
-  position: fixed; bottom: 24px; left: 50%;
+  position: fixed; bottom: calc(24px + env(safe-area-inset-bottom)); left: 50%;
   transform: translateX(-50%) translateY(80px);
   background: var(--gray-800); color: #fff;
   padding: 11px 20px; border-radius: 24px;
@@ -539,42 +515,18 @@ body {
       </div>
     </div>
 
-    <!-- Odometer photos -->
+    <!-- Odometer km input -->
     <div class="card">
-      <div class="card-title"><span class="ct-dot"></span>계기판 사진 촬영 → KM 자동 인식</div>
-      <div class="photo-grid">
-        <!-- Start odometer -->
-        <div class="photo-box" id="startBox">
-          <input type="file" id="startFile" accept="image/*" capture="environment" onchange="handleOdoPhoto('start',this)">
-          <div class="photo-icon">📷</div>
-          <div class="photo-label">출발 계기판</div>
-          <div class="photo-sub">촬영 후 KM 자동 인식</div>
-          <div class="photo-km" id="startKm" style="display:none"></div>
-          <div class="photo-km-unit" id="startKmU" style="display:none">km</div>
-        </div>
-        <!-- End odometer -->
-        <div class="photo-box" id="endBox">
-          <input type="file" id="endFile" accept="image/*" capture="environment" onchange="handleOdoPhoto('end',this)">
-          <div class="photo-icon">📷</div>
-          <div class="photo-label">도착 계기판</div>
-          <div class="photo-sub">촬영 후 KM 자동 인식</div>
-          <div class="photo-km" id="endKm" style="display:none"></div>
-          <div class="photo-km-unit" id="endKmU" style="display:none">km</div>
-        </div>
-      </div>
-      <!-- Manual override -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;">
+      <div class="card-title"><span class="ct-dot"></span>출발/도착 계기수 입력</div>
+      <div class="km-grid">
         <div>
-          <div style="font-size:10px;color:var(--gray-400);margin-bottom:4px;text-align:center;">출발계기 (직접입력)</div>
-          <input class="km-manual" type="number" id="startKmManual" placeholder="0" step="0.1">
+          <div style="font-size:10px;color:var(--gray-400);margin-bottom:4px;text-align:center;">출발계기</div>
+          <input class="km-manual" type="number" id="startKmManual" placeholder="0" step="0.1" inputmode="decimal">
         </div>
         <div>
-          <div style="font-size:10px;color:var(--gray-400);margin-bottom:4px;text-align:center;">도착계기 (직접입력)</div>
-          <input class="km-manual" type="number" id="endKmManual" placeholder="0" step="0.1">
+          <div style="font-size:10px;color:var(--gray-400);margin-bottom:4px;text-align:center;">도착계기</div>
+          <input class="km-manual" type="number" id="endKmManual" placeholder="0" step="0.1" inputmode="decimal">
         </div>
-      </div>
-      <div style="font-size:10px;color:var(--gray-400);text-align:center;margin-top:6px;">
-        ※ OCR 인식 실패 시 직접 입력하세요
       </div>
     </div>
 
@@ -666,15 +618,13 @@ const CAR_NUMS = { '레이': '12가3456', '셀토스': '34나5678', '스포티�
 let currentUser = null;
 let selectedUser = null;
 let selectedCar = null;
-let ocrData = { start: null, end: null }; // { km, imgDataUrl }
 let records = [];
 
 function loadRecords() {
   try { records = JSON.parse(localStorage.getItem('atf_mileage') || '[]'); } catch(e) { records = []; }
 }
 function saveRecords() {
-  const slim = records.map(r => ({ ...r, startImg: '', endImg: '' }));
-  try { localStorage.setItem('atf_mileage', JSON.stringify(slim)); } catch(e) {
+  try { localStorage.setItem('atf_mileage', JSON.stringify(records)); } catch(e) {
     toast('저장 공간 부족. 엑셀 내보내기 후 초기화하세요.', 'err');
   }
 }
@@ -732,7 +682,6 @@ function doLogin() {
 
 function logout() {
   currentUser = null; selectedUser = null; selectedCar = null;
-  ocrData = { start: null, end: null };
   resetForm();
   show('loginScreen');
   document.querySelectorAll('.user-btn').forEach(b => b.classList.remove('selected'));
@@ -763,110 +712,16 @@ function selectCar(el) {
 
 function resetForm() {
   selectedCar = null;
-  ocrData = { start: null, end: null };
   document.querySelectorAll('.car-btn').forEach(b => b.classList.remove('selected'));
-  resetPhotoBox('start');
-  resetPhotoBox('end');
   ['startKmManual','endKmManual','destInput','memoInput'].forEach(id => {
     document.getElementById(id).value = '';
   });
   document.getElementById('distDisplay').classList.remove('visible');
-  document.getElementById('startFile').value = '';
-  document.getElementById('endFile').value = '';
-}
-
-function resetPhotoBox(type) {
-  const box = document.getElementById(type+'Box');
-  box.className = 'photo-box';
-  // rebuild inner HTML without removing file input
-  const fileInput = document.getElementById(type+'File');
-  box.innerHTML = `
-    <input type="file" id="${type}File" accept="image/*" capture="environment" onchange="handleOdoPhoto('${type}',this)">
-    <div class="photo-icon">📷</div>
-    <div class="photo-label">${type==='start'?'출발':'도착'} 계기판</div>
-    <div class="photo-sub">촬영 후 KM 자동 인식</div>
-    <div class="photo-km" id="${type}Km" style="display:none"></div>
-    <div class="photo-km-unit" id="${type}KmU" style="display:none">km</div>`;
-}
-
-// ═══════════════════════════════════════════════
-// OCR: ODOMETER PHOTO → CLAUDE VISION
-// ═══════════════════════════════════════════════
-async function handleOdoPhoto(type, input) {
-  const file = input.files[0];
-  if (!file) return;
-
-  const box = document.getElementById(type+'Box');
-  box.className = 'photo-box loading';
-  box.querySelector('.photo-icon').textContent = '';
-  box.querySelector('.photo-icon').innerHTML = '<div class="ocr-spinner"></div>';
-  box.querySelector('.photo-sub').textContent = 'AI가 계기판을 읽는 중...';
-
-  const dataUrl = await fileToDataUrl(file);
-  const base64 = dataUrl.split(',')[1];
-  const mimeType = file.type || 'image/jpeg';
-
-  try {
-    const km = await callClaudeOCR(base64, mimeType);
-    ocrData[type] = { km, imgDataUrl: dataUrl };
-
-    // Show result in box
-    box.innerHTML = `
-      <input type="file" id="${type}File" accept="image/*" capture="environment" onchange="handleOdoPhoto('${type}',this)">
-      <div class="photo-thumb-wrap"><img src="${dataUrl}" alt="계기판"></div>
-      <div class="photo-km">${km.toLocaleString()}</div>
-      <div class="photo-km-unit">km · 재촬영하려면 탭</div>`;
-    box.className = 'photo-box has-photo';
-
-    // Sync to manual fields
-    document.getElementById(type==='start'?'startKmManual':'endKmManual').value = km;
-
-    updateDistDisplay();
-    toast(`${type==='start'?'출발':'도착'} 계기 인식: ${km.toLocaleString()} km`, 'ok');
-  } catch(e) {
-    box.className = 'photo-box error';
-    box.innerHTML = `
-      <input type="file" id="${type}File" accept="image/*" capture="environment" onchange="handleOdoPhoto('${type}',this)">
-      <div class="photo-icon">⚠️</div>
-      <div class="photo-label" style="color:var(--danger)">인식 실패</div>
-      <div class="photo-sub">직접 입력하거나 재촬영하세요</div>`;
-    toast('OCR 실패: 아래 직접 입력란을 사용하세요', 'err');
-  }
-}
-
-async function callClaudeOCR(base64, mimeType) {
-  const resp = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 100,
-      messages: [{
-        role: 'user',
-        content: [
-          {
-            type: 'image',
-            source: { type: 'base64', media_type: mimeType, data: base64 }
-          },
-          {
-            type: 'text',
-            text: '이 차량 계기판 사진에서 총 주행거리(ODO 또는 총거리) km 수치만 추출하세요. 숫자만 응답하세요. 단위(km)는 제외하고 숫자만. 소수점이 있으면 포함. 예: 12345 또는 12345.6'
-          }
-        ]
-      }]
-    })
-  });
-  if (!resp.ok) throw new Error('API error ' + resp.status);
-  const data = await resp.json();
-  const text = data.content.find(c => c.type === 'text')?.text?.trim() || '';
-  const num = parseFloat(text.replace(/[^0-9.]/g, ''));
-  if (isNaN(num) || num <= 0) throw new Error('parse fail');
-  return num;
 }
 
 function updateDistDisplay() {
-  const startVal = ocrData.start?.km ?? parseFloat(document.getElementById('startKmManual').value);
-  const endVal = ocrData.end?.km ?? parseFloat(document.getElementById('endKmManual').value);
+  const startVal = parseFloat(document.getElementById('startKmManual').value);
+  const endVal = parseFloat(document.getElementById('endKmManual').value);
   if (startVal > 0 && endVal > 0 && endVal >= startVal) {
     const dist = Math.round((endVal - startVal) * 10) / 10;
     document.getElementById('distNum').textContent = dist;
@@ -885,8 +740,8 @@ function submitTrip() {
   const dest = document.getElementById('destInput').value.trim();
   if (!dest) { toast('도착지를 입력하세요.', 'err'); return; }
 
-  const startKm = ocrData.start?.km ?? parseFloat(document.getElementById('startKmManual').value);
-  const endKm   = ocrData.end?.km   ?? parseFloat(document.getElementById('endKmManual').value);
+  const startKm = parseFloat(document.getElementById('startKmManual').value);
+  const endKm   = parseFloat(document.getElementById('endKmManual').value);
   if (!startKm || startKm <= 0) { toast('출발 계기 수치를 입력하세요.', 'err'); return; }
   if (!endKm   || endKm   <= 0) { toast('도착 계기 수치를 입력하세요.', 'err'); return; }
   if (endKm < startKm) { toast('도착 계기가 출발 계기보다 작습니다.', 'err'); return; }
@@ -910,9 +765,6 @@ function submitTrip() {
     endKm,
     distance,
     purpose: '업무',
-    ocrUsed: !!(ocrData.start || ocrData.end),
-    startImg: ocrData.start?.imgDataUrl || '',
-    endImg:   ocrData.end?.imgDataUrl   || '',
     memo: document.getElementById('memoInput').value.trim()
   };
 
@@ -985,14 +837,12 @@ function _renderAdminUI(filter) {
 
   // Stats
   const totalKm = filtered.reduce((s,r) => s + (r.distance||0), 0);
-  const ocrCount = filtered.filter(r => r.ocrUsed).length;
   const carCounts = {};
   filtered.forEach(r => { carCounts[r.car] = (carCounts[r.car]||0)+1; });
   const topCar = Object.entries(carCounts).sort((a,b)=>b[1]-a[1])[0];
   document.getElementById('statsRow').innerHTML = `
     <div class="stat-card"><div class="sc-val">${filtered.length}</div><div class="sc-lbl">건수</div></div>
     <div class="stat-card"><div class="sc-val">${Math.round(totalKm*10)/10}</div><div class="sc-lbl">총 km</div></div>
-    <div class="stat-card"><div class="sc-val">${ocrCount}</div><div class="sc-lbl">OCR 인식</div></div>
     <div class="stat-card"><div class="sc-val">${topCar?topCar[0]:'-'}</div><div class="sc-lbl">최다 차량</div></div>`;
 
   document.getElementById('recCountLabel').textContent = `${filter==='all'?'전체':''} ${filtered.length}건`;
@@ -1014,7 +864,6 @@ function _renderAdminUI(filter) {
         <div class="ri-tags">
           <span class="tag car">🚗 ${r.car}</span>
           <span class="tag km">📏 ${r.startKm}→${r.endKm}km</span>
-          ${r.ocrUsed ? '<span class="tag ocr">🤖 OCR</span>' : ''}
           ${r.memo ? `<span class="tag" style="background:var(--gray-100);color:var(--gray-600);">${r.memo}</span>` : ''}
         </div>
       </div>
@@ -1119,7 +968,6 @@ function exportExcel() {
     '출발계기(km)': r.startKm,
     '도착계기(km)': r.endKm,
     '운행거리(km)': r.distance,
-    'OCR활용': r.ocrUsed ? '○' : '×',
     '비고': r.memo || ''
   }));
 
@@ -1155,7 +1003,7 @@ function exportExcel() {
   const ws1 = XLSX.utils.json_to_sheet(rows);
   ws1['!cols'] = [
     {wch:5},{wch:12},{wch:8},{wch:10},{wch:8},{wch:14},{wch:12},{wch:16},
-    {wch:8},{wch:12},{wch:12},{wch:12},{wch:7},{wch:20}
+    {wch:8},{wch:12},{wch:12},{wch:12},{wch:20}
   ];
   const ws2 = XLSX.utils.json_to_sheet(monthRows);
   const ws3 = XLSX.utils.json_to_sheet(userRows);
@@ -1176,15 +1024,6 @@ function show(screenId) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(screenId).classList.add('active');
   window.scrollTo(0,0);
-}
-
-function fileToDataUrl(file) {
-  return new Promise((res,rej) => {
-    const r = new FileReader();
-    r.onload = e => res(e.target.result);
-    r.onerror = rej;
-    r.readAsDataURL(file);
-  });
 }
 
 let toastTimer;
@@ -1216,8 +1055,7 @@ const db = firebase.firestore();
 // ═══════════════════════════════════════════════
 async function saveRecordToCloud(record) {
   try {
-    const slim = { ...record, startImg: '', endImg: '' };
-    await db.collection('mileage').doc(String(record.id)).set(slim);
+    await db.collection('mileage').doc(String(record.id)).set(record);
     return true;
   } catch(e) {
     console.error('Cloud save error:', e);
