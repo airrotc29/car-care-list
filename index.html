@@ -10,6 +10,8 @@
 <meta name="format-detection" content="telephone=no">
 <title>에이스종합관리(주) 법인차량 운행기록</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <style>
@@ -213,6 +215,8 @@ input, select, textarea { font-size: 16px; }
 .car-btn .car-icon { font-size: 26px; margin-bottom: 5px; }
 .car-btn .car-name { font-size: 12px; font-weight: 700; color: var(--gray-700); }
 .car-btn .car-num { font-size: 10px; color: var(--gray-400); margin-top: 2px; }
+.car-btn .car-last-km { font-size: 9px; color: var(--primary); font-weight: 700; margin-top: 4px; }
+.car-btn.selected .car-last-km { color: var(--primary-d); }
 
 /* Destination input */
 .dest-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
@@ -326,6 +330,9 @@ input, select, textarea { font-size: 16px; }
 .export-btn:hover { background: #15803d; }
 .export-btn.primary { background: var(--primary); }
 .export-btn.primary:hover { background: var(--primary-d); }
+.export-btn.report { background: #7c3aed; }
+.export-btn.report:hover { background: #6d28d9; }
+.export-btn:disabled { background: var(--gray-300); cursor: not-allowed; }
 
 .rec-list { max-height: 60vh; overflow-y: auto; }
 .rec-item {
@@ -522,16 +529,19 @@ input, select, textarea { font-size: 16px; }
           <div class="car-icon">🚗</div>
           <div class="car-name">레이</div>
           <div class="car-num">소형</div>
+          <div class="car-last-km" id="carLastKm-레이">-</div>
         </div>
         <div class="car-btn" data-car="셀토스" data-num="에이스 셀토스" onclick="selectCar(this)">
           <div class="car-icon">🚙</div>
           <div class="car-name">셀토스</div>
           <div class="car-num">SUV</div>
+          <div class="car-last-km" id="carLastKm-셀토스">-</div>
         </div>
         <div class="car-btn" data-car="스포티지" data-num="에이스 스포티지" onclick="selectCar(this)">
           <div class="car-icon">🛻</div>
           <div class="car-name">스포티지</div>
           <div class="car-num">SUV</div>
+          <div class="car-last-km" id="carLastKm-스포티지">-</div>
         </div>
       </div>
     </div>
@@ -583,9 +593,10 @@ input, select, textarea { font-size: 16px; }
     <div class="rec-table-wrap">
       <div class="rec-table-head">
         <span id="recCountLabel">전체 0건</span>
-        <div style="display:flex;gap:6px;">
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
           <button class="export-btn primary" onclick="bulkApproveManager()">✅ 일괄 승인</button>
           <button class="export-btn" onclick="exportExcel()">📊 엑셀 내보내기</button>
+          <button class="export-btn report" onclick="showReportModal()">📄 월간 보고서</button>
         </div>
       </div>
       <div class="rec-list" id="recList"></div>
@@ -637,6 +648,19 @@ input, select, textarea { font-size: 16px; }
     <div class="modal-btns">
       <button class="modal-btn cancel" onclick="closeCeoModal()">취소</button>
       <button class="modal-btn confirm" onclick="checkCeoPin()">확인</button>
+    </div>
+  </div>
+</div>
+
+<!-- Monthly report modal -->
+<div class="modal-bg" id="reportModal">
+  <div class="modal-box">
+    <h3>📄 월간 보고서</h3>
+    <div style="font-size:11px;color:var(--gray-500);margin-bottom:10px;">결재 현황을 포함한 PDF 보고서를 생성할 월을 선택하세요.</div>
+    <input class="modal-pin-input" type="month" id="reportMonthInput" style="font-size:16px;letter-spacing:0;">
+    <div class="modal-btns">
+      <button class="modal-btn cancel" onclick="closeReportModal()">취소</button>
+      <button class="modal-btn confirm" id="reportGenerateBtn" onclick="generateMonthlyReport()">생성</button>
     </div>
   </div>
 </div>
@@ -751,6 +775,19 @@ function goMain() {
   document.getElementById('headerName').textContent = currentUser.name + rankLabel;
   document.getElementById('headerAv').textContent = currentUser.name[0];
   show('mainScreen');
+  renderCarLastKm();
+  loadRecordsFromCloud().then(renderCarLastKm);
+}
+
+function renderCarLastKm() {
+  Object.keys(CAR_NUMS).forEach(car => {
+    const last = records
+      .filter(r => r.car === car)
+      .sort((a,b) => new Date(b.datetime) - new Date(a.datetime))[0];
+    const el = document.getElementById('carLastKm-' + car);
+    if (!el) return;
+    el.textContent = last ? `최근 도착 ${last.endKm.toLocaleString()}km` : '기록 없음';
+  });
 }
 
 function selectCar(el) {
@@ -827,6 +864,7 @@ function submitTrip() {
 
   records.unshift(record);
   saveRecords(); // localStorage cache
+  renderCarLastKm();
   // Cloud save
   saveRecordToCloud(record).then(ok => {
     if (ok) toast(`✅ ${distance}km 운행 기록 저장 완료! ☁️`, 'ok');
@@ -1234,6 +1272,144 @@ function exportExcel() {
   const fname = `아티스포럼_운행일지_${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}.xlsx`;
   XLSX.writeFile(wb, fname);
   toast(`📊 엑셀 저장 완료`, 'ok');
+}
+
+// ═══════════════════════════════════════════════
+// MONTHLY REPORT (PDF) — 관리자/대표이사 결재 현황 보고서
+// ═══════════════════════════════════════════════
+function showReportModal() {
+  const now = new Date();
+  document.getElementById('reportMonthInput').value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  document.getElementById('reportModal').classList.add('open');
+}
+function closeReportModal() {
+  document.getElementById('reportModal').classList.remove('open');
+}
+
+async function generateMonthlyReport() {
+  const ym = document.getElementById('reportMonthInput').value; // 'YYYY-MM'
+  if (!ym) { toast('월을 선택하세요.', 'err'); return; }
+
+  const btn = document.getElementById('reportGenerateBtn');
+  btn.disabled = true;
+  btn.textContent = '생성 중...';
+
+  let container;
+  try {
+    await loadRecordsFromCloud();
+    const monthRecords = records
+      .filter(r => r.date && r.date.startsWith(ym))
+      .sort((a,b) => new Date(a.datetime) - new Date(b.datetime));
+
+    if (!monthRecords.length) {
+      toast('해당 월에 운행기록이 없습니다.', 'err');
+      return;
+    }
+
+    container = document.createElement('div');
+    container.style.cssText = 'position:fixed;left:-9999px;top:0;width:800px;background:#fff;';
+    container.innerHTML = buildReportHtml(ym, monthRecords);
+    document.body.appendChild(container);
+
+    const canvas = await html2canvas(container, { scale: 2, backgroundColor: '#ffffff' });
+
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const imgWidth = 210;
+    const pageHeight = 297;
+    const imgHeight = canvas.height * imgWidth / canvas.width;
+    const imgData = canvas.toDataURL('image/png');
+
+    let heightLeft = imgHeight;
+    let position = 0;
+    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+    heightLeft -= pageHeight;
+    while (heightLeft > 0) {
+      position = heightLeft - imgHeight;
+      pdf.addPage();
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+    }
+
+    pdf.save(`에이스종합관리_월간결재보고서_${ym.replace('-','')}.pdf`);
+    closeReportModal();
+    toast('📄 월간 보고서 PDF 생성 완료', 'ok');
+  } catch(e) {
+    console.error('Report generation error:', e);
+    toast('⚠️ 보고서 생성 실패', 'err');
+  } finally {
+    if (container) document.body.removeChild(container);
+    btn.disabled = false;
+    btn.textContent = '생성';
+  }
+}
+
+function buildReportHtml(ym, list) {
+  const [y, m] = ym.split('-');
+  const totalKm = list.reduce((s,r) => s + (r.distance||0), 0);
+  const ceoDone = list.filter(r => r.approval?.ceoDate).length;
+  const pendingCount = list.length - ceoDone;
+  const completeRate = list.length ? Math.round((ceoDone / list.length) * 100) : 0;
+  const managerNames = [...new Set(list.filter(r => r.approval?.managerDate).map(r => r.approval.managerName))];
+  const ceoNames = [...new Set(list.filter(r => r.approval?.ceoDate).map(r => r.approval.ceoName))];
+
+  const summary = [
+    ['총 운행건수', list.length + '건'],
+    ['총 주행거리', Math.round(totalKm*10)/10 + 'km'],
+    ['결재완료', ceoDone + '건'],
+    ['결재대기', pendingCount + '건'],
+    ['결재완료율', completeRate + '%']
+  ];
+
+  const rowsHtml = list.map((r, i) => `
+    <tr>
+      <td style="text-align:center;">${i+1}</td>
+      <td style="text-align:center;">${r.date}</td>
+      <td style="text-align:center;">${r.userName}</td>
+      <td style="text-align:center;">${r.car}</td>
+      <td>${r.from} → ${r.to}</td>
+      <td style="text-align:right;">${r.distance}</td>
+      <td style="text-align:center;">${r.approval?.managerDate ? `${r.approval.managerName}<br><span style="color:#9ca3af;font-size:9px;">${r.approval.managerDate}</span>` : '-'}</td>
+      <td style="text-align:center;">${r.approval?.ceoDate ? `${r.approval.ceoName}<br><span style="color:#9ca3af;font-size:9px;">${r.approval.ceoDate}</span>` : '-'}</td>
+      <td style="text-align:center;">${r.approval?.ceoDate ? '<span style="color:#059669;font-weight:700;">완료</span>' : '<span style="color:#d97706;font-weight:700;">대기</span>'}</td>
+    </tr>`).join('');
+
+  return `
+    <style>
+      .rpt-table { width:100%; border-collapse:collapse; font-size:11px; }
+      .rpt-table th, .rpt-table td { border:1px solid #e5e7eb; padding:6px; }
+      .rpt-table thead tr { background:#1f2937; color:#fff; }
+    </style>
+    <div style="font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;color:#1f2937;padding:32px;">
+      <div style="text-align:center;margin-bottom:24px;">
+        <div style="font-size:13px;color:#6b7280;font-weight:600;letter-spacing:1px;">에이스종합관리(주)</div>
+        <div style="font-size:22px;font-weight:800;margin-top:6px;">${y}년 ${parseInt(m,10)}월 법인차량 운행 결재 보고서</div>
+        <div style="font-size:11px;color:#9ca3af;margin-top:6px;">생성일: ${todayStr()}</div>
+      </div>
+
+      <div style="display:flex;gap:10px;margin-bottom:20px;">
+        ${summary.map(([label, val]) => `
+          <div style="flex:1;border:1px solid #e5e7eb;border-radius:8px;padding:10px;text-align:center;">
+            <div style="font-size:17px;font-weight:800;color:#2563eb;">${val}</div>
+            <div style="font-size:10px;color:#9ca3af;margin-top:2px;">${label}</div>
+          </div>`).join('')}
+      </div>
+
+      <table class="rpt-table">
+        <thead>
+          <tr>
+            <th>번호</th><th>날짜</th><th>운전자</th><th>차량</th><th>구간</th>
+            <th>거리(km)</th><th>관리자승인</th><th>대표이사결재</th><th>상태</th>
+          </tr>
+        </thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+
+      <div style="display:flex;gap:20px;font-size:11px;color:#4b5563;">
+        <div>관리자 결재자: ${managerNames.length ? managerNames.join(', ') : '-'}</div>
+        <div>대표이사 결재자: ${ceoNames.length ? ceoNames.join(', ') : '-'}</div>
+      </div>
+    </div>`;
 }
 
 // ═══════════════════════════════════════════════
