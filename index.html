@@ -781,9 +781,7 @@ function goMain() {
 
 function renderCarLastKm() {
   Object.keys(CAR_NUMS).forEach(car => {
-    const last = records
-      .filter(r => r.car === car)
-      .sort((a,b) => new Date(b.datetime) - new Date(a.datetime))[0];
+    const last = lastRecordForCar(car);
     const el = document.getElementById('carLastKm-' + car);
     if (!el) return;
     el.textContent = last ? `최근 도착 ${last.endKm.toLocaleString()}km` : '기록 없음';
@@ -794,6 +792,17 @@ function selectCar(el) {
   document.querySelectorAll('.car-btn').forEach(b => b.classList.remove('selected'));
   el.classList.add('selected');
   selectedCar = el.dataset.car;
+
+  // 편의성: 최근 도착계기를 출발계기에 자동 입력
+  const last = lastRecordForCar(selectedCar);
+  document.getElementById('startKmManual').value = last ? last.endKm : '';
+  updateDistDisplay();
+}
+
+function lastRecordForCar(car) {
+  return records
+    .filter(r => r.car === car)
+    .sort((a,b) => new Date(b.datetime) - new Date(a.datetime))[0];
 }
 
 function resetForm() {
