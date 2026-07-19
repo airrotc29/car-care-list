@@ -301,7 +301,7 @@ input, select, textarea { font-size: 16px; }
 .filter-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
 
 .stats-row {
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px;
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 14px;
 }
 .stat-card {
   background: #fff; border-radius: 10px; padding: 10px 8px;
@@ -346,11 +346,28 @@ input, select, textarea { font-size: 16px; }
 .tag.car { background: var(--primary-l); color: var(--primary); }
 .tag.km { background: var(--success-l); color: var(--success); }
 
-.ri-right { text-align: right; min-width: 48px; }
+.ri-right { text-align: right; min-width: 64px; }
 .ri-km { font-size: 16px; font-weight: 800; color: var(--gray-800); }
 .ri-km-u { font-size: 10px; color: var(--gray-400); }
 .ri-del { background: none; border: none; color: var(--gray-300); font-size: 14px; cursor: pointer; margin-top: 4px; display: block; margin-left: auto; }
 .ri-del:hover { color: var(--danger); }
+.ri-approve {
+  background: var(--primary); color: #fff; border: none;
+  border-radius: 6px; padding: 4px 9px; font-size: 11px; font-weight: 700;
+  cursor: pointer; margin-top: 6px; display: block; margin-left: auto;
+}
+.ri-approve:hover { background: var(--primary-d); }
+
+/* Approval chain */
+.approval-chain {
+  display: flex; align-items: center; gap: 4px; margin-bottom: 10px; flex-wrap: wrap;
+}
+.approval-step {
+  font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 20px;
+  background: var(--gray-100); color: var(--gray-400);
+}
+.approval-step.done { background: var(--success-l); color: var(--success); }
+.approval-arrow { font-size: 11px; color: var(--gray-300); }
 
 .empty-msg { text-align: center; padding: 40px 20px; color: var(--gray-400); font-size: 13px; }
 
@@ -464,6 +481,7 @@ input, select, textarea { font-size: 16px; }
     <div class="app-bar-btns">
       <button class="bar-btn" onclick="showCare()">🔧 정비</button>
       <button class="bar-btn" onclick="showAdmin()">📊 관리</button>
+      <button class="bar-btn" onclick="showCeoApproval()">🖋️ 대표결재</button>
       <button class="bar-btn" onclick="logout()">로그아웃</button>
     </div>
   </div>
@@ -580,6 +598,17 @@ input, select, textarea { font-size: 16px; }
   <div class="admin-body" id="careBody"></div>
 </div>
 
+<!-- ══════════════════════════════
+     SCREEN 5: CEO APPROVAL (대표이사 결재)
+══════════════════════════════ -->
+<div class="screen" id="ceoScreen">
+  <div class="admin-bar">
+    <div class="admin-bar-title">🖋️ 대표이사 결재</div>
+    <button class="bar-btn" style="background:rgba(255,255,255,0.1);border-color:rgba(255,255,255,0.2);" onclick="showMain()">← 돌아가기</button>
+  </div>
+  <div class="admin-body" id="ceoBody"></div>
+</div>
+
 <!-- Admin PIN modal -->
 <div class="modal-bg" id="adminModal">
   <div class="modal-box">
@@ -589,6 +618,19 @@ input, select, textarea { font-size: 16px; }
     <div class="modal-btns">
       <button class="modal-btn cancel" onclick="closeAdminModal()">취소</button>
       <button class="modal-btn confirm" onclick="checkAdminPin()">확인</button>
+    </div>
+  </div>
+</div>
+
+<!-- CEO PIN modal -->
+<div class="modal-bg" id="ceoModal">
+  <div class="modal-box">
+    <h3>🔐 대표이사 PIN</h3>
+    <input class="modal-pin-input" type="password" id="ceoPinInput" maxlength="20" placeholder="PIN 입력" autocomplete="off">
+    <div style="font-size:11px;color:var(--danger);min-height:16px;margin-top:6px;" id="ceoPinError"></div>
+    <div class="modal-btns">
+      <button class="modal-btn cancel" onclick="closeCeoModal()">취소</button>
+      <button class="modal-btn confirm" onclick="checkCeoPin()">확인</button>
     </div>
   </div>
 </div>
@@ -609,6 +651,7 @@ const USERS = [
   { id: 'u6', name: '직접입력', rank: '' },
 ];
 const ADMIN_PIN = 'admin1234!'; // 관리자 PIN
+const CEO_PIN = '9999'; // 대표이사 PIN (변경 권장)
 const FROM_PLACE = '아티스포럼';
 const CAR_NUMS = { '레이': '12가3456', '셀토스': '34나5678', '스포티지': '56다7890' }; // 실제 번호로 교체
 
@@ -765,7 +808,15 @@ function submitTrip() {
     endKm,
     distance,
     purpose: '업무',
-    memo: document.getElementById('memoInput').value.trim()
+    memo: document.getElementById('memoInput').value.trim(),
+    approval: {
+      staffName: currentUser.name,
+      staffDate: todayStr(),
+      managerName: '',
+      managerDate: '',
+      ceoName: '',
+      ceoDate: ''
+    }
   };
 
   records.unshift(record);
@@ -805,6 +856,94 @@ function checkAdminPin() {
 }
 function showMain() { show('mainScreen'); }
 
+// ═══════════════════════════════════════════════
+// CEO APPROVAL (대표이사 결재)
+// ═══════════════════════════════════════════════
+function showCeoApproval() {
+  document.getElementById('ceoPinError').textContent = '';
+  document.getElementById('ceoPinInput').value = '';
+  document.getElementById('ceoModal').classList.add('open');
+  setTimeout(() => document.getElementById('ceoPinInput').focus(), 100);
+}
+document.getElementById('ceoPinInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') checkCeoPin();
+});
+function closeCeoModal() {
+  document.getElementById('ceoModal').classList.remove('open');
+}
+function checkCeoPin() {
+  const val = document.getElementById('ceoPinInput').value;
+  if (val === CEO_PIN) {
+    closeCeoModal();
+    renderCeo();
+    show('ceoScreen');
+  } else {
+    document.getElementById('ceoPinError').textContent = '❌ PIN이 올바르지 않습니다.';
+  }
+}
+
+function renderCeo() {
+  document.getElementById('ceoBody').innerHTML = '<div class="empty-msg">☁️ 결재 대기 목록 불러오는 중...</div>';
+  loadRecordsFromCloud().then(() => { _renderCeoUI(); });
+}
+
+function _renderCeoUI() {
+  const pending = records.filter(r => r.approval?.managerDate && !r.approval?.ceoDate);
+  const done = records.filter(r => r.approval?.ceoDate)
+    .sort((a,b) => new Date(b.approval.ceoDate) - new Date(a.approval.ceoDate))
+    .slice(0, 10);
+
+  const renderItem = (r, withBtn) => `
+    <div class="rec-item">
+      <div class="ri-left">
+        <div class="ri-date">${r.date ? r.date.slice(5).replace('-','/') : '-'}</div>
+        <div class="ri-time">${r.time || '-'}</div>
+      </div>
+      <div class="ri-body">
+        <div class="ri-user">${r.userName}${r.userRank && r.userRank !== '직접입력' ? ' <span style="font-size:10px;font-weight:500;color:var(--gray-400);">' + r.userRank + '</span>' : ''}</div>
+        <div class="ri-route">${r.from} → ${r.to}</div>
+        <div class="ri-tags">
+          <span class="tag car">🚗 ${r.car}</span>
+          <span class="tag km">📏 ${r.startKm}→${r.endKm}km</span>
+          ${r.memo ? `<span class="tag" style="background:var(--gray-100);color:var(--gray-600);">${r.memo}</span>` : ''}
+        </div>
+        ${approvalChainHtml(r)}
+      </div>
+      <div class="ri-right">
+        <div class="ri-km">${r.distance}</div>
+        <div class="ri-km-u">km</div>
+        ${withBtn ? `<button class="ri-approve" onclick="approveCeo(${r.id})">결재</button>` : ''}
+      </div>
+    </div>`;
+
+  document.getElementById('ceoBody').innerHTML = `
+    <div class="card" style="padding:0;overflow:hidden;">
+      <div class="rec-table-head"><span>🖋️ 결재 대기 ${pending.length}건</span></div>
+      <div class="rec-list">
+        ${pending.length ? pending.map(r => renderItem(r, true)).join('') : '<div class="empty-msg">📭 결재 대기 중인 운행기록이 없습니다.</div>'}
+      </div>
+    </div>
+    <div class="card" style="padding:0;overflow:hidden;">
+      <div class="rec-table-head"><span>✅ 최근 결재완료</span></div>
+      <div class="rec-list">
+        ${done.length ? done.map(r => renderItem(r, false)).join('') : '<div class="empty-msg">결재완료 기록이 없습니다.</div>'}
+      </div>
+    </div>`;
+}
+
+async function approveCeo(id) {
+  const r = records.find(x => x.id === id);
+  if (!r || !r.approval?.managerDate) return;
+  r.approval.ceoName = currentUser?.name || '대표이사';
+  r.approval.ceoDate = todayStr();
+  await saveRecordToCloud(r);
+  saveRecords();
+  _renderCeoUI();
+  toast('대표이사 결재 완료', 'ok');
+}
+
+let currentAdminFilter = 'all';
+
 function renderAdmin(filter) {
   // show loading state
   document.getElementById('recList').innerHTML = '<div class="empty-msg">☁️ 데이터 불러오는 중...</div>';
@@ -813,6 +952,7 @@ function renderAdmin(filter) {
   });
 }
 function _renderAdminUI(filter) {
+  currentAdminFilter = filter;
   // Filter buttons
   const filters = [
     { key: 'all', label: '전체' },
@@ -837,13 +977,15 @@ function _renderAdminUI(filter) {
 
   // Stats
   const totalKm = filtered.reduce((s,r) => s + (r.distance||0), 0);
+  const pendingCount = filtered.filter(r => !r.approval?.ceoDate).length;
   const carCounts = {};
   filtered.forEach(r => { carCounts[r.car] = (carCounts[r.car]||0)+1; });
   const topCar = Object.entries(carCounts).sort((a,b)=>b[1]-a[1])[0];
   document.getElementById('statsRow').innerHTML = `
     <div class="stat-card"><div class="sc-val">${filtered.length}</div><div class="sc-lbl">건수</div></div>
     <div class="stat-card"><div class="sc-val">${Math.round(totalKm*10)/10}</div><div class="sc-lbl">총 km</div></div>
-    <div class="stat-card"><div class="sc-val">${topCar?topCar[0]:'-'}</div><div class="sc-lbl">최다 차량</div></div>`;
+    <div class="stat-card"><div class="sc-val">${topCar?topCar[0]:'-'}</div><div class="sc-lbl">최다 차량</div></div>
+    <div class="stat-card"><div class="sc-val">${pendingCount}</div><div class="sc-lbl">결재대기</div></div>`;
 
   document.getElementById('recCountLabel').textContent = `${filter==='all'?'전체':''} ${filtered.length}건`;
 
@@ -866,13 +1008,39 @@ function _renderAdminUI(filter) {
           <span class="tag km">📏 ${r.startKm}→${r.endKm}km</span>
           ${r.memo ? `<span class="tag" style="background:var(--gray-100);color:var(--gray-600);">${r.memo}</span>` : ''}
         </div>
+        ${approvalChainHtml(r)}
       </div>
       <div class="ri-right">
         <div class="ri-km">${r.distance}</div>
         <div class="ri-km-u">km</div>
+        ${!r.approval?.managerDate ? `<button class="ri-approve" onclick="approveManager(${r.id})">관리자 승인</button>` : ''}
         <button class="ri-del" onclick="deleteRecord(${r.id})">✕</button>
       </div>
     </div>`).join('');
+}
+
+function approvalChainHtml(r) {
+  const a = r.approval || {};
+  const steps = [
+    { label: '담당자', done: true },
+    { label: '관리자', done: !!a.managerDate },
+    { label: '대표이사', done: !!a.ceoDate }
+  ];
+  return `<div class="approval-chain" style="margin-top:6px;margin-bottom:0;">
+    ${steps.map((s,i) => `${i>0?'<span class="approval-arrow">→</span>':''}<span class="approval-step${s.done?' done':''}">${s.done?'✓ ':''}${s.label}</span>`).join('')}
+  </div>`;
+}
+
+async function approveManager(id) {
+  const r = records.find(x => x.id === id);
+  if (!r) return;
+  if (!r.approval) r.approval = { staffName: r.userName || '', staffDate: r.date || '', managerName: '', managerDate: '', ceoName: '', ceoDate: '' };
+  r.approval.managerName = currentUser?.name || '관리자';
+  r.approval.managerDate = todayStr();
+  await saveRecordToCloud(r);
+  saveRecords();
+  _renderAdminUI(currentAdminFilter);
+  toast('관리자 승인 완료', 'ok');
 }
 
 function deleteRecord(id) {
@@ -968,7 +1136,9 @@ function exportExcel() {
     '출발계기(km)': r.startKm,
     '도착계기(km)': r.endKm,
     '운행거리(km)': r.distance,
-    '비고': r.memo || ''
+    '비고': r.memo || '',
+    '관리자승인': r.approval?.managerDate ? `${r.approval.managerName} (${r.approval.managerDate})` : '',
+    '대표이사결재': r.approval?.ceoDate ? `${r.approval.ceoName} (${r.approval.ceoDate})` : ''
   }));
 
   // Sheet 2: 월별 집계
@@ -1003,7 +1173,7 @@ function exportExcel() {
   const ws1 = XLSX.utils.json_to_sheet(rows);
   ws1['!cols'] = [
     {wch:5},{wch:12},{wch:8},{wch:10},{wch:8},{wch:14},{wch:12},{wch:16},
-    {wch:8},{wch:12},{wch:12},{wch:12},{wch:20}
+    {wch:8},{wch:12},{wch:12},{wch:12},{wch:20},{wch:20},{wch:20}
   ];
   const ws2 = XLSX.utils.json_to_sheet(monthRows);
   const ws3 = XLSX.utils.json_to_sheet(userRows);
