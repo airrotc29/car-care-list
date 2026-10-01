@@ -203,7 +203,7 @@ input, select, textarea { font-size: 16px; }
 .info-chip .ic-value { font-size: 13px; font-weight: 700; }
 
 /* Car select */
-.car-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+.car-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .car-btn {
   border: 1.5px solid var(--gray-200);
   border-radius: 12px; padding: 12px 6px;
@@ -531,17 +531,11 @@ input, select, textarea { font-size: 16px; }
           <div class="car-num">세단</div>
           <div class="car-last-km" id="carLastKm-아반떼">-</div>
         </div>
-        <div class="car-btn" data-car="카니발1" data-num="파트너스 카니발 1호차" onclick="selectCar(this)">
+        <div class="car-btn" data-car="카니발" data-num="파트너스 카니발" onclick="selectCar(this)">
           <div class="car-icon">🚐</div>
-          <div class="car-name">카니발 1호차</div>
+          <div class="car-name">카니발</div>
           <div class="car-num">승합</div>
-          <div class="car-last-km" id="carLastKm-카니발1">-</div>
-        </div>
-        <div class="car-btn" data-car="카니발2" data-num="파트너스 카니발 2호차" onclick="selectCar(this)">
-          <div class="car-icon">🚐</div>
-          <div class="car-name">카니발 2호차</div>
-          <div class="car-num">승합</div>
-          <div class="car-last-km" id="carLastKm-카니발2">-</div>
+          <div class="car-last-km" id="carLastKm-카니발">-</div>
         </div>
       </div>
     </div>
@@ -683,7 +677,7 @@ const USERS = [
 const ADMIN_PIN = 'admin1234!'; // 관리자 PIN
 const CEO_PIN = 'admin1234!'; // 대표이사 PIN
 const FROM_PLACE = '파트너스';
-const CAR_NUMS = { '아반떼': '12가3456', '카니발1': '34나5678', '카니발2': '56다7890' }; // 실제 번호로 교체
+const CAR_NUMS = { '아반떼': '12가3456', '카니발': '34나5678' }; // 실제 번호로 교체
 
 // ═══════════════════════════════════════════════
 // STATE
