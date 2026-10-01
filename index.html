@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#2563eb">
 <meta name="format-detection" content="telephone=no">
-<title>에이스종합관리(주) 법인차량 운행기록</title>
+<title>파트너스 법인차량 관리</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -458,8 +458,8 @@ input, select, textarea { font-size: 16px; }
 <div class="screen active" id="loginScreen">
   <div class="login-card">
     <div class="login-logo">
-      <div class="company">에이스종합관리(주)</div>
-      <div class="title">🚗 법인차량 운행기록</div>
+      <div class="company">파트너스</div>
+      <div class="title">🚗 파트너스 법인차량 관리</div>
       <div class="sub">법인세법 시행령 제50조의2</div>
     </div>
 
@@ -507,7 +507,7 @@ input, select, textarea { font-size: 16px; }
         </div>
         <div class="info-chip">
           <div class="ic-label">출발지</div>
-          <div class="ic-value">아티스포럼</div>
+          <div class="ic-value">파트너스</div>
         </div>
         <div class="info-chip">
           <div class="ic-label">운행목적</div>
@@ -515,7 +515,7 @@ input, select, textarea { font-size: 16px; }
         </div>
       </div>
       <div class="dest-row">
-        <div class="dest-from">아티스포럼</div>
+        <div class="dest-from">파트너스</div>
         <div class="dest-arrow">→</div>
         <input class="dest-input" id="destInput" type="text" placeholder="도착지 입력" autocomplete="off">
       </div>
@@ -673,16 +673,16 @@ input, select, textarea { font-size: 16px; }
 // CONFIG — 사용자·PIN 등록 (변경 필요 시 여기만)
 // ═══════════════════════════════════════════════
 const USERS = [
-  { id: 'u1', name: '이건우', rank: '부장' },
-  { id: 'u2', name: '김근회', rank: '과장' },
-  { id: 'u3', name: '이태희', rank: '대리' },
-  { id: 'u4', name: '배장원', rank: '대리' },
-  { id: 'u5', name: '최재우', rank: '과장' },
+  { id: 'u1', name: '황윤호', rank: '' },
+  { id: 'u2', name: '박동희', rank: '' },
+  { id: 'u3', name: '최재우', rank: '' },
+  { id: 'u4', name: '유병옥', rank: '' },
+  { id: 'u5', name: '최성호', rank: '' },
   { id: 'u6', name: '직접입력', rank: '' },
 ];
 const ADMIN_PIN = 'admin1234!'; // 관리자 PIN
 const CEO_PIN = 'admin1234!'; // 대표이사 PIN
-const FROM_PLACE = '아티스포럼';
+const FROM_PLACE = '파트너스';
 const CAR_NUMS = { '레이': '12가3456', '셀토스': '34나5678', '스포티지': '56다7890' }; // 실제 번호로 교체
 
 // ═══════════════════════════════════════════════
@@ -1278,7 +1278,7 @@ function exportExcel() {
   XLSX.utils.book_append_sheet(wb, ws3, '사용자별집계');
 
   const now = new Date();
-  const fname = `아티스포럼_운행일지_${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}.xlsx`;
+  const fname = `파트너스_운행일지_${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}.xlsx`;
   XLSX.writeFile(wb, fname);
   toast(`📊 엑셀 저장 완료`, 'ok');
 }
@@ -1340,7 +1340,7 @@ async function generateMonthlyReport() {
       heightLeft -= pageHeight;
     }
 
-    pdf.save(`에이스종합관리_월간결재보고서_${ym.replace('-','')}.pdf`);
+    pdf.save(`파트너스_월간결재보고서_${ym.replace('-','')}.pdf`);
     closeReportModal();
     toast('📄 월간 보고서 PDF 생성 완료', 'ok');
   } catch(e) {
@@ -1391,7 +1391,7 @@ function buildReportHtml(ym, list) {
     </style>
     <div style="font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;color:#1f2937;padding:32px;">
       <div style="text-align:center;margin-bottom:24px;">
-        <div style="font-size:13px;color:#6b7280;font-weight:600;letter-spacing:1px;">에이스종합관리(주)</div>
+        <div style="font-size:13px;color:#6b7280;font-weight:600;letter-spacing:1px;">파트너스</div>
         <div style="font-size:22px;font-weight:800;margin-top:6px;">${y}년 ${parseInt(m,10)}월 법인차량 운행 결재 보고서</div>
         <div style="font-size:11px;color:#9ca3af;margin-top:6px;">생성일: ${todayStr()}</div>
       </div>
